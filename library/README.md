@@ -1,5 +1,8 @@
 # C++ library guide
 
+ブラウザで検索・絞り込み・木上Beamの動作図を使う場合は
+[`handbook/library.html`](../handbook/library.html) を開いてください。
+
 この文書は `library/` 以下の全headerについて、アルゴリズム、使いどころ、最小の
 使い方、計算量・注意点をまとめたものです。APIを覚えることより、問題に合わせて
 headerやtemplateを直接改造できることを優先しています。

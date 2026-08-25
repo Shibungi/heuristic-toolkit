@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="AHC heuristic-toolkit C++ library guide">
+  <title>Heuristic Toolkit — Library Guide</title>
+  <link rel="stylesheet" href="css/library.css">
+</head>
+<body>
+<header class="guide-header">
+  <a class="brand" href="index.html"><span class="brand-mark">HT</span><span>Heuristic Toolkit</span></a>
+  <label class="global-search"><span aria-hidden="true">⌕</span><span class="sr-only">ライブラリを検索</span><input id="library-search" type="search" placeholder="手法・症状・APIを検索  /" autocomplete="off"></label>
+  <div class="header-actions"><button id="expand-all" type="button">すべて開く</button><a href="../library/README.md">Markdown版</a></div>
+</header>
+
+<div class="guide-layout">
+  <aside class="guide-sidebar" aria-label="ライブラリ目次">
+    <p class="sidebar-label">OVERVIEW</p>
+    <nav id="guide-nav">
+      <a href="#overview">選び方</a>
+      <a href="#tree-beam-lab">木上Beam図解</a>
+      <p class="sidebar-label">SEARCH</p>
+      <a href="#simulated-annealing">Simulated Annealing</a>
+      <a href="#hill-climbing">Hill Climbing</a>
+      <a href="#normal-beam">Normal Beam</a>
+      <a href="#tree-beam">Tree / Euler-tour Beam</a>
+      <a href="#chokudai">Chokudai Search</a>
+      <a href="#mcts">MCTS</a>
+      <p class="sidebar-label">CORE</p>
+      <a href="#rng">RNG</a><a href="#timer">Timer</a>
+      <p class="sidebar-label">STRUCTURES</p>
+      <a href="#fast-clear">FastClearArray</a><a href="#fast-set">FastSet</a>
+      <a href="#undo-log">UndoLog</a><a href="#zobrist">Zobrist hash</a><a href="#bitset">Bitset tools</a>
+      <p class="sidebar-label">GRAPH / GRID</p>
+      <a href="#dsu">DSU / RollbackDSU</a><a href="#shortest-path">BFS / Dijkstra</a><a href="#grid">GridIndex</a>
+      <p class="sidebar-label">UTILITY</p>
+      <a href="#logger">Logger</a>
+    </nav>
+  </aside>
+
+  <main id="guide-main">
+    <section id="overview" class="guide-hero">
+      <p class="eyebrow">OFFLINE C++ REFERENCE</p>
+      <h1>問題の形から、使う部品へ。</h1>
+      <p class="hero-copy">辞典を上から読むのではなく、状態の作り方とbottleneckから最初の手法を選ぶ。各項目に原理、最小API、使う条件、危険点をまとめています。</p>
+      <div class="hero-stats" aria-label="ガイドの収録内容">
+        <div><strong>17</strong><span>headers</span></div><div><strong>6</strong><span>search methods</span></div><div><strong>0</strong><span>runtime dependencies</span></div>
+      </div>
+    </section>
+
+    <section class="decision-section" aria-labelledby="decision-title">
+      <div class="section-heading"><p class="eyebrow">START HERE</p><h2 id="decision-title">最初の分岐</h2></div>
+      <div class="decision-grid">
+        <a href="#simulated-annealing" class="decision-item"><span>完成解を局所変更できる</span><strong>HC → SA</strong><small>deltaが軽く、良い解の近傍も比較的良い</small></a>
+        <a href="#normal-beam" class="decision-item"><span>逐次的に解を構築する</span><strong>Normal Beam</strong><small>Stateが小さく、まず正しいbaselineを作る</small></a>
+        <a href="#tree-beam" class="decision-item featured"><span>State copyが支配的</span><strong>Tree Beam</strong><small>小さいActionと厳密なapply / undoがある</small></a>
+        <a href="#mcts" class="decision-item"><span>rolloutが将来価値を予測する</span><strong>MCTS</strong><small>同じnodeを十分再訪できる</small></a>
+      </div>
+    </section>
+
+    <section id="tree-beam-lab" class="beam-lab" aria-labelledby="beam-lab-title">
+      <div class="section-heading split-heading"><div><p class="eyebrow">ANIMATED EXPLAINER</p><h2 id="beam-lab-title">通常Beamと木上Beam</h2></div><div class="lab-controls"><button id="beam-step" type="button">次のevent</button><button id="beam-play" type="button" aria-pressed="false">再生</button></div></div>
+      <p class="section-lead">同じ3葉を調べるとき、通常Beamは葉ごとのStateを持ち、木上Beamは1個のStateを探索木上で移動させます。</p>
+      <div class="beam-comparison">
+        <div class="beam-mode normal-mode">
+          <div class="mode-title"><h3>Normal Beam</h3><span>State × beam幅</span></div>
+          <div class="snapshot-row" aria-label="通常Beamが保持する状態コピー">
+            <div class="state-snapshot" data-normal-leaf="c"><b>State C</b><span>[ root, a, c ]</span></div>
+            <div class="state-snapshot" data-normal-leaf="d"><b>State D</b><span>[ root, a, d ]</span></div>
+            <div class="state-snapshot" data-normal-leaf="e"><b>State E</b><span>[ root, b, e ]</span></div>
+          </div>
+          <p class="mode-metric"><strong>3</strong> State snapshots in this example</p>
+        </div>
+        <div class="beam-mode tree-mode">
+          <div class="mode-title"><h3>Euler-tour Tree Beam</h3><span>State × 1 + Action tree</span></div>
+          <svg id="beam-tree-svg" viewBox="0 0 480 245" role="img" aria-labelledby="tree-svg-title tree-svg-desc">
+            <title id="tree-svg-title">Euler-tour beam tree</title><desc id="tree-svg-desc">One mutable state traverses from root through actions a, c, d, b, and e using apply and undo.</desc>
+            <g class="tree-edges"><path data-edge="root-a" d="M240 40 L140 105"/><path data-edge="root-b" d="M240 40 L340 105"/><path data-edge="a-c" d="M140 105 L75 185"/><path data-edge="a-d" d="M140 105 L185 185"/><path data-edge="b-e" d="M340 105 L340 185"/></g>
+            <g class="tree-nodes">
+              <g data-node="root" transform="translate(240 40)"><circle r="23"/><text y="5">root</text></g>
+              <g data-node="a" transform="translate(140 105)"><circle r="20"/><text y="5">a</text></g>
+              <g data-node="b" transform="translate(340 105)"><circle r="20"/><text y="5">b</text></g>
+              <g data-node="c" transform="translate(75 185)"><circle r="20"/><text y="5">C</text></g>
+              <g data-node="d" transform="translate(185 185)"><circle r="20"/><text y="5">D</text></g>
+              <g data-node="e" transform="translate(340 185)"><circle r="20"/><text y="5">E</text></g>
+            </g>
+            <circle id="state-cursor" cx="240" cy="40" r="9"><title>current mutable State</title></circle>
+            <text class="cursor-label" id="cursor-label" x="258" y="26">1 mutable State</text>
+          </svg>
+          <p class="mode-metric"><strong>1</strong> mutable State; edges store small Actions</p>
+        </div>
+      </div>
+      <div class="event-strip" aria-live="polite"><code id="beam-event-code">start at root</code><span id="beam-event-detail">Stateは初期状態</span><div class="event-progress"><span id="beam-event-progress"></span></div></div>
+    </section>
+
+    <section class="catalog-tools" aria-label="ライブラリ絞り込み">
+      <div><p class="eyebrow">LIBRARY CATALOG</p><h2>Header reference</h2></div>
+      <div id="category-filters" class="filter-row"><button type="button" class="active" data-category="all" aria-pressed="true">すべて</button><button type="button" data-category="search" aria-pressed="false">Search</button><button type="button" data-category="core" aria-pressed="false">RNG / Timer</button><button type="button" data-category="structures" aria-pressed="false">Structures</button><button type="button" data-category="graph" aria-pressed="false">Graph / Grid</button><button type="button" data-category="utility" aria-pressed="false">Utility</button></div>
+    </section>
+    <p id="no-library-results" class="no-results" role="status">一致するライブラリがありません。</p>
+
+    <section class="catalog-section" data-category-section="search"><h2>Search</h2>
+      <article id="simulated-annealing" class="library-entry" data-category="search" data-search="simulated annealing sa 焼きなまし metropolis temperature adaptive neighborhood delta rollback">
+        <div class="entry-head"><div><p class="path">search/simulated_annealing.hpp</p><h3>Simulated Annealing</h3></div><span class="entry-kind">LOCAL SEARCH</span></div>
+        <p class="entry-summary">悪化moveを温度依存確率で受理し、局所最適を越える。Stateを隠さず、差分評価のhot loopを問題側に残す。</p>
+        <div class="entry-facts"><span><b>向く</b> 完成解＋軽い局所変更</span><span><b>1反復</b> propose + delta + apply</span><span><b>重要</b> 近傍 / delta検証</span></div>
+        <details><summary>アルゴリズム</summary><p>最大化では <code>delta = new − current</code>。改善は常に受理し、悪化は <code>exp(delta / T)</code> で受理する。線形・指数schedule、iteration/time progress、reheat、adaptive近傍を提供する。</p></details>
+        <details><summary>最小コード</summary><pre><code>ht::Annealer sa({100.0, 0.1,
+  ht::CoolingSchedule::Exponential,
+  ht::Objective::Maximize}, seed);
+
+Move m = propose(state, sa.rng());
+double delta = calc_delta(state, m);
+if (sa.accept(delta, timer.progress())) {
+  apply(state, m);
+  score += delta;
+}</code></pre></details>
+        <details><summary>注意</summary><ul><li><code>full_score == incremental_score</code> をrandomized testする。</li><li>温度調整より先に、近傍のfeasible率・受理率・改善/秒を見る。</li><li>真scoreとsurrogateを分ける場合、bestは真scoreでも保持する。</li></ul></details>
+      </article>
+
+      <article id="hill-climbing" class="library-entry" data-category="search" data-search="hill climbing hc 山登り local search baseline delta">
+        <div class="entry-head"><div><p class="path">search/hill_climbing.hpp</p><h3>Hill Climbing</h3></div><span class="entry-kind">BASELINE</span></div>
+        <p class="entry-summary"><code>delta ≥ 0</code> のmoveだけを採用する。近傍と差分計算をdebugする最小baseline。</p>
+        <div class="entry-facts"><span><b>向く</b> SA導入前</span><span><b>弱点</b> 局所最適</span><span><b>目的</b> 正しさ確認</span></div>
+        <details><summary>使用例</summary><pre><code>State best = ht::hill_climb&lt;State, Move&gt;(
+  initial, 1'000'000, seed,
+  propose, delta_score, apply);</code></pre><p>最大化用。最小化はscoreの符号を反転するか、問題側で同じloopを直接書く。</p></details>
+      </article>
+
+      <article id="normal-beam" class="library-entry" data-category="search" data-search="normal beam layered fixed width nth_element duplicate state copy sequential construction">
+        <div class="entry-head"><div><p class="path">search/beam_search.hpp</p><h3>Normal Beam Search</h3></div><span class="entry-kind">SEQUENTIAL</span></div>
+        <p class="entry-summary">深さごとに全子を生成し、評価上位K個だけ残す。読みやすく、Stateが小さい問題の第一候補。</p>
+        <div class="entry-facts"><span><b>選択</b> nth_element</span><span><b>重複</b> 64-bit hash</span><span><b>cost</b> 候補数 × State copy</span></div>
+        <details><summary>アルゴリズムと使用例</summary><pre><code>Node answer = ht::layered_beam_search(
+  initial, depth,
+  {.width = 500, .deduplicate = true},
+  [](const Node&amp; parent, auto emit) {
+    for (Action a : actions(parent.state)) {
+      Node child = parent;
+      apply(child.state, a);
+      emit(std::move(child));
+    }
+  });</code></pre></details>
+        <details><summary>木上Beamへ移るサイン</summary><p><code>sizeof(State) × generated candidates</code> が大きく、profileでcopyが支配的。Actionが小さく、applyとundoをO(1)前後で書ける場合。</p></details>
+      </article>
+
+      <article id="tree-beam" class="library-entry highlighted-entry" data-category="search" data-search="tree beam euler tour rollback apply undo copy free 木上 ビーム 差分 state copy">
+        <div class="entry-head"><div><p class="path">search/tree_beam_search.hpp</p><h3>Tree / Euler-tour Beam Search</h3></div><span class="entry-kind">COPY-FREE</span></div>
+        <p class="entry-summary">候補履歴が張る部分木だけをEuler tourで保持し、1個のStateをapply/undoで全葉へ移動する。</p>
+        <div class="entry-facts"><span><b>State</b> 1個</span><span><b>保存</b> 小さいAction tree</span><span><b>結果</b> action列を復元</span></div>
+        <details open><summary>最小コード</summary><pre><code>ht::TreeBeamSearch&lt;State, Action, long long&gt; beam({
+  .width = 5000,
+  .deduplicate = true,
+});
+
+auto result = beam.solve(
+  initial, initial_score, initial_hash, depth,
+  [](State&amp; s, auto emit) {
+    for (Action a : enumerate_actions(s))
+      emit(a, s.score + delta(s, a), next_hash(s, a));
+  },
+  [](State&amp; s, const Action&amp; a) { apply(s, a); },
+  [](State&amp; s, const Action&amp; a) { undo(s, a); });</code></pre></details>
+        <details><summary>契約と危険点</summary><ul><li><code>expand</code> はStateを変更せずにreturnする。</li><li><code>undo</code> はbit単位で元状態へ戻す。apply/undo回数とfull scoreをtestする。</li><li>Actionへ大きいsnapshotを持たせると利点が消える。</li><li>prefix共有が少ない木、undoが重い状態では通常Beamとも比較する。</li></ul></details>
+      </article>
+
+      <article id="chokudai" class="library-entry" data-category="search" data-search="chokudai search priority queue depth sweep beam">
+        <div class="entry-head"><div><p class="path">search/chokudai_search.hpp</p><h3>Chokudai Search</h3></div><span class="entry-kind">LAYER QUEUES</span></div>
+        <p class="entry-summary">深さごとのpriority queueを残し、浅い層から複数sweepする。通常Beamが一度で捨てる候補を後から展開できる。</p>
+        <div class="entry-facts"><span><b>向く</b> 深さごとの候補品質が不均一</span><span><b>memory</b> 各層queue</span></div>
+        <details><summary>使用例</summary><pre><code>Node answer = ht::chokudai_search(
+  initial, max_depth, sweeps, width,
+  [](const Node&amp; node, auto emit) {
+    for (Node child : expand(node)) emit(std::move(child));
+  });</code></pre><p><code>Node::operator&lt;</code> は良いnodeがpriority queueのtopになるよう定義する。</p></details>
+      </article>
+
+      <article id="mcts" class="library-entry" data-category="search" data-search="mcts monte carlo tree search ucb1 puct rollout progressive widening transposition">
+        <div class="entry-head"><div><p class="path">search/mcts.hpp</p><h3>Monte Carlo Tree Search</h3></div><span class="entry-kind">ROLLOUT</span></div>
+        <p class="entry-summary">selection → expansion → rollout → backpropagation。UCB1、PUCT、progressive wideningを切替可能。</p>
+        <div class="entry-facts"><span><b>向く</b> rolloutに予測力</span><span><b>弱点</b> 巨大分岐 / 長いhorizon</span><span><b>baseline</b> State copy型</span></div>
+        <details><summary>Model API</summary><pre><code>struct Model {
+  vector&lt;Action&gt; actions(const State&amp;);
+  State next(const State&amp;, Action);
+  bool terminal(const State&amp;);
+  double evaluate(const State&amp;);
+  double prior(const State&amp;, Action);
+  Action rollout_action(const State&amp;,
+    const vector&lt;Action&gt;&amp;, ht::Xoshiro256StarStar&amp;);
+};</code></pre></details>
+        <details><summary>選ばない条件</summary><p>rolloutがnoise、遷移copyが重い、決定論的で途中評価が強い場合はBeamを先に試す。transpositionはcycle、手番視点、depth依存価値を確認して問題側で統合する。</p></details>
+      </article>
+    </section>
+
+    <section class="catalog-section" data-category-section="core"><h2>Random &amp; Time</h2>
+      <article id="rng" class="library-entry" data-category="core" data-search="rng random xoshiro splitmix bounded uniform bernoulli seed">
+        <div class="entry-head"><div><p class="path">random/rng.hpp</p><h3>Xoshiro256** RNG</h3></div><span class="entry-kind">HOT LOOP</span></div>
+        <p class="entry-summary">SplitMix64でseedを拡散し、xoshiro256**で高速な64-bit乱数を生成する。bounded整数はrejectionでmod biasを避ける。</p>
+        <div class="entry-facts"><span><b>state</b> 256 bit</span><span><b>再現</b> 同一seed</span><span><b>用途</b> 非暗号</span></div>
+        <details><summary>API</summary><pre><code>ht::Xoshiro256StarStar rng(seed);
+uint64_t raw = rng();
+int i = rng.uniform_int(0, n - 1);
+uint64_t k = rng.uniform_u64(n);
+double x = rng.uniform01();
+bool hit = rng.bernoulli(0.2);</code></pre></details>
+      </article>
+      <article id="timer" class="library-entry" data-category="core" data-search="timer chrono elapsed progress safety margin poll time limit">
+        <div class="entry-head"><div><p class="path">timer/timer.hpp</p><h3>Timer</h3></div><span class="entry-kind">TIME CONTROL</span></div>
+        <p class="entry-summary">steady_clockとsafety marginを持ち、clock取得を256反復に1回などへ間引く。</p>
+        <div class="entry-facts"><span><b>cached</b> elapsed / progress</span><span><b>exact</b> elapsed_exact</span></div>
+        <details><summary>API</summary><pre><code>ht::Timer timer(1.95, 0.03);
+for (uint64_t iter = 0; ; ++iter) {
+  if (timer.poll(iter, 255)) break;
+  double progress = timer.progress();
+}</code></pre><p>間引き区間の超過、初期化、出力時間をsafety marginに含める。</p></details>
+      </article>
+    </section>
+
+    <section class="catalog-section" data-category-section="structures"><h2>Structures</h2>
+      <article id="fast-clear" class="library-entry compact-entry" data-category="structures" data-search="fast clear array timestamp generation counter visited bfs workspace">
+        <div class="entry-head"><div><p class="path">structures/fast_clear_array.hpp</p><h3>FastClearArray</h3></div><span class="entry-kind">O(1) CLEAR</span></div>
+        <p class="entry-summary">値ごとのgeneration stampで、通常のclearをO(1)にする。BFS workspaceの反復利用に向く。</p>
+        <details><summary>使用例</summary><pre><code>ht::FastClearArray&lt;int&gt; dist(n, -1);
+dist.set(start, 0);
+if (!dist.contains(v)) dist.set(v, d);
+dist.clear();</code></pre></details>
+      </article>
+      <article id="fast-set" class="library-entry compact-entry" data-category="structures" data-search="fast set dense sparse swap remove candidate active set">
+        <div class="entry-head"><div><p class="path">structures/fast_set.hpp</p><h3>FastSet</h3></div><span class="entry-kind">DENSE / SPARSE</span></div>
+        <p class="entry-summary">密な整数universe `[0,n)` のinsert / erase / contains / clearをO(1)。iteration順は不定。</p>
+        <details><summary>使用例</summary><pre><code>ht::FastSet active(n);
+active.insert(v); active.erase(v);
+for (int x : active.values()) visit(x);</code></pre></details>
+      </article>
+      <article id="undo-log" class="library-entry compact-entry" data-category="structures" data-search="undo log rollback checkpoint reversible assign state tree dfs">
+        <div class="entry-head"><div><p class="path">structures/rollback.hpp</p><h3>UndoLog</h3></div><span class="entry-kind">REVERSIBLE</span></div>
+        <p class="entry-summary">変更前のaddress/valueをstackへ積み、checkpointまでLIFOで戻す。</p>
+        <details><summary>使用例</summary><pre><code>ht::UndoLog&lt;int&gt; undo;
+auto cp = undo.checkpoint();
+undo.assign(state.x, 10);
+undo.assign(state.y, 20);
+undo.rollback(cp);</code></pre><p>記録中にvector resize等でaddressを無効化しない。</p></details>
+      </article>
+      <article id="zobrist" class="library-entry compact-entry" data-category="structures" data-search="zobrist hash duplicate transposition xor incremental collision">
+        <div class="entry-head"><div><p class="path">structures/zobrist_hash.hpp</p><h3>Zobrist Hash</h3></div><span class="entry-kind">O(1) UPDATE</span></div>
+        <p class="entry-summary">各(position,value)の乱数をXORし、1箇所変更時にold/newだけでhashを更新する。</p>
+        <details><summary>使用例</summary><pre><code>ht::ZobristTable z(positions, values, seed);
+hash ^= z.at(position, state[position]);
+z.change(hash, position, old_value, new_value);</code></pre><p>64-bit衝突は低確率であり、0ではない。誤除去不可なら二重hashかState追加照合。</p></details>
+      </article>
+      <article id="bitset" class="library-entry compact-entry" data-category="structures" data-search="bitset bit operation popcount intersection dynamic bits">
+        <div class="entry-head"><div><p class="path">structures/bitset_tools.hpp</p><h3>Bitset Tools</h3></div><span class="entry-kind">WORD PARALLEL</span></div>
+        <p class="entry-summary"><code>vector&lt;uint64_t&gt;</code> のpopcountとintersection count。計算量はword数。</p>
+        <details><summary>使用例</summary><pre><code>a[v &gt;&gt; 6] |= 1ULL &lt;&lt; (v &amp; 63);
+int all = ht::popcount(a);
+int common = ht::intersection_count(a, b);</code></pre><p>固定長ならまず <code>std::bitset&lt;N&gt;</code> を使う。</p></details>
+      </article>
+    </section>
+
+    <section class="catalog-section" data-category-section="graph"><h2>Graph &amp; Grid</h2>
+      <article id="dsu" class="library-entry" data-category="graph" data-search="dsu union find rollback connectivity checkpoint graph component">
+        <div class="entry-head"><div><p class="path">graph/dsu.hpp</p><h3>DSU / RollbackDSU</h3></div><span class="entry-kind">CONNECTIVITY</span></div>
+        <p class="entry-summary">通常DSUはpath compression＋union by size。rollback版はpath compressionを避け、merge履歴を戻す。</p>
+        <div class="entry-facts"><span><b>DSU</b> 償却ほぼO(1)</span><span><b>rollback</b> O(log n) depth</span></div>
+        <details><summary>使用例</summary><pre><code>ht::RollbackDSU dsu(n);
+auto cp = dsu.checkpoint();
+dsu.merge(a, b);
+bool same = dsu.same(a, b);
+dsu.rollback(cp);</code></pre></details>
+      </article>
+      <article id="shortest-path" class="library-entry" data-category="graph" data-search="bfs multi source dijkstra shortest path graph distance queue heap">
+        <div class="entry-head"><div><p class="path">graph/shortest_path.hpp</p><h3>Multi-source BFS / Dijkstra</h3></div><span class="entry-kind">DISTANCE</span></div>
+        <p class="entry-summary">非重み付きはBFS、非負整数重みはbinary-heap Dijkstra。AHC hot loopではworkspace再利用へ改造する。</p>
+        <details><summary>使用例</summary><pre><code>auto d1 = ht::bfs(graph, vector&lt;int&gt;{s1, s2});
+auto d2 = ht::dijkstra(weighted_graph, source);</code></pre><p>BFSはO(V+E)、DijkstraはO((V+E) log V)。0/1重みなら0-1 BFSを選ぶ。</p></details>
+      </article>
+      <article id="grid" class="library-entry" data-category="graph" data-search="grid flatten index 4 neighbor inside row column sentinel">
+        <div class="entry-head"><div><p class="path">grid/grid.hpp</p><h3>GridIndex</h3></div><span class="entry-kind">FLATTEN</span></div>
+        <p class="entry-summary"><code>id = r*w+c</code> で2D gridを連続memoryへ置き、4近傍と境界判定を共通化する。</p>
+        <details><summary>使用例</summary><pre><code>ht::GridIndex grid{h, w};
+int v = grid.id(r, c);
+for (int d = 0; d &lt; 4; ++d) {
+  int nr = r + grid.dr[d], nc = c + grid.dc[d];
+  if (grid.inside(nr, nc)) visit(grid.id(nr, nc));
+}</code></pre></details>
+      </article>
+    </section>
+
+    <section class="catalog-section" data-category-section="utility"><h2>Utility</h2>
+      <article id="logger" class="library-entry" data-category="utility" data-search="logger debug stderr release log disabled macro elapsed score temperature">
+        <div class="entry-head"><div><p class="path">utility/logger.hpp</p><h3>Compile-time Logger</h3></div><span class="entry-kind">ZERO RELEASE COST</span></div>
+        <p class="entry-summary">debugではstderrへ出し、releaseでは式の評価ごと消える。探索loopではdebug時も間引く。</p>
+        <details><summary>使用例</summary><pre><code>HT_LOG("elapsed=" &lt;&lt; timer.elapsed()
+  &lt;&lt; " current=" &lt;&lt; score
+  &lt;&lt; " best=" &lt;&lt; best_score);</code></pre><p><code>environment/compile debug</code> が <code>HT_ENABLE_LOG</code> を定義する。</p></details>
+      </article>
+    </section>
+
+    <footer class="guide-footer"><p>正しさ → 速度 → 変更容易性。測るのは <strong>quality / iteration</strong>、<strong>iterations / second</strong>、<strong>paired final score</strong>。</p><a href="index.html">実戦ハンドブックへ戻る</a></footer>
+  </main>
+</div>
+<script src="js/library.js"></script>
+</body>
+</html>
