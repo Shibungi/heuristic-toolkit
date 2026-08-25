@@ -1,0 +1,86 @@
+<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AHC Practical Handbook</title><link rel="stylesheet" href="css/style.css"></head><body>
+<header><h1>AHC Practical Handbook</h1><input id="search" type="search" placeholder="症状・構造・手法を検索（/ でフォーカス）"></header>
+<div class="layout"><aside class="sidebar"><nav>
+<a href="#start">開始チェック</a><a href="#decision">Decision Tree</a><a href="#symptoms">症状から探す</a><a href="#patterns">問題構造</a><a href="#neighborhoods">近傍設計</a><a href="#algorithms">探索選択</a><a href="#speed">高速化</a><a href="#failures">失敗パターン</a><a href="#cases">過去例の抽象化</a><a href="#measurement">評価・benchmark</a><a href="cheat-sheet.html">印刷用Cheat Sheet</a>
+</nav><div class="tags"><button class="tag-filter" data-tag="sa">SA</button><button class="tag-filter" data-tag="beam">Beam</button><button class="tag-filter" data-tag="score">score</button><button class="tag-filter" data-tag="speed">高速化</button><button class="tag-filter" data-tag="representation">表現</button><button class="tag-filter" data-tag="test">検証</button></div></aside><main>
+<p class="lead">目的は手法を思い出すことではなく、<strong>問題の特徴 → 表現 → 初期解 → 探索 → 近傍 → 高速化 → 検証</strong>を短時間でつなぐこと。まず正しいgreedyとscore breakdownを作る。</p>
+<section id="start"><h2>開始チェック</h2>
+<article class="card" data-tags="score representation test"><h3>問題を読んだ直後</h3><ol><li>入力サイズ、操作上限、出力上限、時間、メモリ、interactiveか</li><li>スコアの向き・丸め・0点条件・ケース間集約を数式化</li><li><code>score = Σ local contribution</code> に分けられるか。各decisionがどの項に依存するかを図示</li><li>hard feasibilityとsoft penaltyを分離。常に実行可能解を保てる表現は何か</li><li>状態変数、decision variable、対称性、可換性、分離可能性、冗長性</li><li>trivial boundとgreedy baseline。1ケースを手計算しscorerと一致させる</li><li>full score、delta score、hashをランダム操作列で照合</li><li>100 seedの中央値と分布、プロファイル、探索反復数を記録</li></ol></article>
+<article class="card" data-tags="score representation"><h3>最初に作るscore breakdown</h3><p><span class="first">まず:</span> 総scoreだけでなく、距離・違反・未処理・資源・終端価値など寄与別にログする。改善が何を犠牲にしたか見える。</p><p>依存グラフを作り「変数xを変えると再計算する項」を列挙。prefix/suffix、局所キャッシュ、dirty flag、定期full再計算の候補を決める。</p></article></section>
+
+<section id="decision"><h2>Problem → Method Decision Tree</h2><div class="flow">逐次的に解を構築する？
+├─ Yes
+│  ├─ 各深さの分岐候補を絞れる？
+│  │  ├─ Yes → greedy baseline → fixed/time-limited Beam
+│  │  │         深さ間で良い候補の出現が偏る → Chokudai
+│  │  └─ No  → candidate reduction / dominance / pruning
+│  └─ 先の価値をsimulationで比較でき、分岐が中程度？ → MCTSを小規模検証
+└─ No（完成解を作れる）
+   ├─ 局所変更で実行可能性を保てる？
+   │  ├─ Yes → HC → SA → ILS / multi-start
+   │  └─ No
+   │     ├─ 一部を壊して貪欲に直せる？ → destroy-repair / LNS
+   │     └─ 表現を簡略化 → surrogateを探索 → 最後にrepair
+   └─ 変数が巨大？ → block / coordinate / coarse-to-fine
+
+greedyが強い → tie-break / randomized greedy / parameter search / greedy+LS を先に試す
+探索1回が重い → 近似評価・候補制限・差分化。賢さ×1回より quality×iterations を測る</div></section>
+
+<section id="symptoms"><h2>症状から探す</h2>
+<article class="card" data-tags="score speed"><h3>スコア計算が重い</h3><p class="first">最初: deltaの依存範囲を列挙。</p><ol><li>変更部分だけのlocal contribution</li><li>prefix/suffix、区間集約、前後からの再計算</li><li>dirty flagとキャッシュ</li><li>安いsurrogateを普段使いし、真値を定期計算</li><li>複数moveをまとめて再評価</li></ol><p class="danger">危険: cache invalidation bug。ランダム差分テストを常設する。</p></article>
+<article class="card" data-tags="sa score test"><h3>SAが改善しない</h3><p class="first">最初: delta bugと近傍を疑う。温度調整はその後。</p><ol><li>同一状態でfull scoreとincremental scoreが一致するか</li><li>受理率を近傍別・時間帯別にログ</li><li>近傍が弱すぎる/強すぎる、実行可能性判定でほぼ棄却されていないか</li><li>初期温度で悪化moveの20–80%程度を受理するかを観察</li><li>終温度でほぼhill climbになるか</li><li>表現が良い解同士を局所moveで結べるか</li></ol><p>次: relocate↔swap↔segment↔destroy-repair、adaptive selection、restart/reheat。</p></article>
+<article class="card" data-tags="beam speed representation"><h3>Beamが遅い / 幅を増やせない</h3><ol><li>State copy bytes × generated nodesを計算</li><li>全sortを<code>nth_element</code>に変更</li><li>action/parentだけ保持、layer workspaceを再利用</li><li>hashを差分更新。重複除去が得点に見合うかA/B</li><li>候補生成を上位Kに制限、深さ別width</li><li>rollbackで親を順に適用しchild評価</li></ol><p class="danger">幅を増やすと、多様性低下・評価関数の偏り・時間切れで悪化もする。</p></article>
+<article class="card" data-tags="representation score"><h3>変数が多すぎる</h3><p>重要変数だけ選ぶ、block coordinate、coarse-to-fine、低頻度変数を固定、destroy-repair。詳細を探索せず、順序・集合・anchorだけ最適化して最後にgreedy/DPでmaterializeする。</p></article>
+<article class="card" data-tags="test score"><h3>改善したはずなのに順位が安定しない</h3><p>同じseedでpaired comparison。meanだけでなくmedian、win/tie/lose、relative/geometric mean、bootstrap CIを見る。極端seedをscore breakdownし、ケース群を構造で層別化する。</p></article>
+<article class="card" data-tags="speed test"><h3>ローカル実行時間が揺れる</h3><p>benchmarkは単独process、warmup後に同一caseを複数回。physical coreへaffinity固定、SMT siblingを同時使用しない。turbo/温度/電源プラン/background/WSL・Docker差を記録。throughput時間を提出時間と解釈しない。</p></article>
+<article class="card" data-tags="score representation"><h3>greedyがかなり強い</h3><p class="first">複雑化の前に:</p><p>tie-breakの特徴量化、ランダム化、候補上位Kから選択、parameter sweep、multi-start、最後だけlocal search。greedyの選択理由をログして「誤る局面」だけを再探索する。</p></article>
+<article class="card" data-tags="sa representation"><h3>実行可能性制約が探索を殺す</h3><p>常にfeasibleな符号化、repair付きmove、制約を保つcycle/Kempe-chain、違反量を段階的penaltyにする。拒否率を原因別に測る。soft化する場合、終了前に必ずrepair可能か確認。</p></article>
+</section>
+
+<section id="patterns"><h2>問題構造 → 初手</h2>
+<article class="card" data-tags="sa representation"><h3>順列・巡回・訪問順</h3><p><code>greedy construction → swap/insert/2-opt → SA → segment/LNS</code></p><p>位置間寄与ならswap、隣接辺寄与なら2-opt、precedenceが強ければremove-reinsert。linked listは挿入が軽いがランダム位置参照とcopyに注意。</p></article>
+<article class="card" data-tags="sa representation"><h3>配置・割当</h3><p><code>greedy placement → relocate → swap → block move → SA/LNS</code></p><p>各要素の所属先とbin集約を持つ。空き容量・局所costを差分化。関連要素をまとめたblockは谷を越えるがdeltaが重い。</p></article>
+<article class="card" data-tags="sa score"><h3>スケジューリング</h3><p><code>priority heuristic → single reassignment → swap → critical region optimization</code></p><p>全区間ではなく遅延・資源競合のcritical regionを選ぶ。prefix/suffix状態で区間だけ再simulate。</p></article>
+<article class="card" data-tags="beam representation"><h3>長い操作列</h3><p><code>greedy → candidate-reduced Beam → 局所区間の再探索</code></p><p>出力列全体でなくparent/actionを保存。状態の同値性をhashに落とせるならdedupe。終盤だけ評価精度を上げる。</p></article>
+<article class="card" data-tags="representation score"><h3>巨大空間・詳細生成が重い</h3><p><code>coarse solution → important variables → restricted optimization → exact/greedy repair</code></p><p>探索変数をanchor、集合、順序へ落とし、経路や細部は都度近似または最後に生成。surrogateと真scoreの順位相関を測る。</p></article>
+<article class="card" data-tags="mcts"><h3>逐次意思決定＋rollout</h3><p>分岐が中程度、horizonが短〜中、途中状態の価値がrolloutで識別できる場合だけMCTS候補。分岐巨大ならprogressive widening、良いpriorがあればPUCT。遷移copyとrollout誤差が大きいならBeam/greedyを優先。</p></article></section>
+
+<section id="neighborhoods"><h2>近傍設計集</h2><table><thead><tr><th>近傍</th><th>適する表現 / 計算量</th><th>探索性・注意</th></tr></thead><tbody>
+<tr><td>swap</td><td>配列・割当。典型O(1)〜依存項数</td><td>feasibleを保ちやすい。順序の大移動は遅い</td></tr><tr><td>insert / relocate</td><td>順列・bin。配列O(length)、linked list O(1)</td><td>順序/所属を強く変える。影響区間のdelta</td></tr><tr><td>reverse / 2-opt</td><td>経路。対称距離ならO(1)</td><td>交差除去に強い。有向・位置依存costでは内部再計算</td></tr><tr><td>3-opt / segment</td><td>経路・操作列。O(1)〜segment長</td><td>強いが候補数と実装bug増。2-opt飽和後</td></tr><tr><td>block swap</td><td>cluster化された列/配置</td><td>谷越え。block選択を構造に寄せる</td></tr><tr><td>single/multi mutation</td><td>ベクトル・離散パラメータ</td><td>multiのサイズを温度/停滞で変える</td></tr><tr><td>boundary shift</td><td>区間分割・領域</td><td>局所deltaが容易。merge/splitも併用</td></tr><tr><td>destroy-repair</td><td>強制約の割当・経路</td><td>強いexploration。repair qualityと時間を測る</td></tr><tr><td>Kempe-chain / cycle</td><td>彩色・matching・保存制約</td><td>feasibilityを保ちつつ大変更。連結成分生成cost</td></tr><tr><td>edge exchange</td><td>木・network</td><td>追加辺でcycleを作り1辺削除。接続性維持</td></tr></tbody></table>
+<article class="card" data-tags="sa test"><h3>近傍の評価表</h3><p>各近傍について「試行数、feasible率、受理率、改善率、平均delta、ns/試行、bestへの寄与」を時間帯別に取る。強い近傍ほど良いとは限らず、<strong>改善/秒</strong>で選ぶ。最低確率を残したadaptive選択で未探索化を防ぐ。</p></article></section>
+
+<section id="algorithms"><h2>探索の使い分け</h2>
+<article class="card" data-tags="sa"><h3>HC / SA / ILS / LNS</h3><p>HCはbaselineと近傍debugに最適。局所的な良さが連続し差分が軽ければSA。restartで盆地が変わるならILS。局所moveで谷を越えられない強制約・cluster構造ならLNS/ruin-recreate。Tabu/LAHC/threshold acceptingは、SAの温度調整より履歴/閾値が扱いやすい場合に知識候補とし、まず薄い実装でA/Bする。</p></article>
+<article class="card" data-tags="beam"><h3>Beam / Chokudai</h3><p>Beamは逐次構築、終端までの評価が途中状態から相関、候補削減が可能な場合。Chokudaiは良いnodeが深さごとに不均一に発生し、時間内に各depthを繰り返し掘る価値がある場合。通常Beamの方がcache localityと実装の単純さで勝つことも多い。</p><p>hash collision: 64-bit一個は高速な近似。誤除去が許せないなら128-bit/代表状態の軽い照合。重複除去自体のcostも測る。</p></article>
+<article class="card" data-tags="mcts"><h3>MCTSを選ぶ条件</h3><p><strong>向く:</strong> rolloutが最終価値を識別、同じ木を十分再訪、確率的結果、行動priorが有用。<strong>向かない:</strong> 分岐巨大、horizon長大、rolloutがほぼnoise、遷移が重い、決定論的でBeam評価が強い。transpositionは合流が多い時だけ。cycle・深さ依存価値・共有統計のperspectiveに注意。</p></article>
+<article class="card" data-tags="representation"><h3>知識として持つが標準実装しないもの</h3><p>Branch and Bound、limited discrepancy、Tabu、GRASP、LAHCなどは問題依存のbound・memory・constructionが本体。巨大frameworkには入れず、該当構造が見えた時にテンプレートを直接改造する。</p></article></section>
+
+<section id="speed"><h2>高速化の判断</h2>
+<article class="card" data-tags="speed representation"><h3>State管理</h3><p>小さいtrivially-copyable stateならvector copyで十分。大きければundo log、reversible operation、parent/action、workspace再利用。copy-on-writeは参照管理costがあるため共有が多い時だけ。allocationをloop外へ。</p></article>
+<article class="card" data-tags="speed"><h3>set / hash / candidate</h3><p>小さい密なkeyは配列・timestamp・bitset。挿入削除のdense universeはdense/sparse set。<code>unordered_map</code>は反復数が十分なら使う。reserve、custom hash、flat representationはprofileで支配的な時だけ。priority queueはlazy deletion、上位Kだけならnth_element/bucketも検討。</p></article>
+<article class="card" data-tags="speed"><h3>grid / graph</h3><p>gridを1次元flatten、番兵またはneighbors事前計算、BFS queue/distを再利用。全点間距離を前計算できるサイズか確認。BFS/0-1 BFS/Dijkstraを素直に選び、incremental shortest pathは更新が局所かつ再計算が実測bottleneckの場合だけ。</p></article>
+<article class="card" data-tags="speed sa"><h3>hot loop</h3><p>xoshiroの整数/real生成、modulo rejection、<code>exp</code>、chrono頻度、branch、state copy、allocation、virtual/<code>std::function</code>をmicro benchmark。Timerは256回に1度などでclockを読む。acceptanceのexpは悪化moveだけ。最適化は探索loop全体のprofileで再確認。</p></article></section>
+
+<section id="failures"><h2>失敗パターン</h2>
+<article class="card" data-tags="sa score"><h3>SAがgreedyに負ける</h3><p>初期解を壊すだけの近傍、surrogateが真scoreと不一致、温度以前にdelta bug。greedyからHCを行い、改善moveの存在と到達可能性を先に確認。</p></article>
+<article class="card" data-tags="beam speed"><h3>Beam width増で悪化</h3><p>時間当たり深さ不足、同型候補で多様性消失、弱い途中評価のbias増幅。widthだけでなく候補制限・dedupe key・depth別配分をA/B。</p></article>
+<article class="card" data-tags="score speed"><h3>高精度評価で反復激減</h3><p>評価精度の相関向上とiterations/secを分離。二段階評価、periodic true score、終盤だけ高精度を試す。</p></article>
+<article class="card" data-tags="test"><h3>少数seedで改善を誤認</h3><p>同一seed paired、100→1000へ段階拡大、bootstrap CI。チューニングに使ったseedとholdoutを分ける。</p></article>
+<article class="card" data-tags="speed"><h3>並列時間を信じる</h3><p>cache/memory/SMT/thermal競合を含むthroughput測定で単体実行時間を推定しない。benchmark.pyを単独・affinity固定で使う。</p></article>
+<article class="card" data-tags="representation"><h3>複雑な初期解に時間を使いすぎる</h3><p>初期解改善が最終scoreに残るか、探索時間減を上回るかを測る。単純greedy+長い探索とpaired比較。</p></article></section>
+
+<section id="cases"><h2>過去例からの一般化</h2>
+<article class="card" data-tags="sa score"><h3>局所group再計算（AHC049型）</h3><p>変更が少数groupに閉じ、group sizeが小さいなら、そのgroupだけ真scoreを再計算する。relocate/swapが自然。前後どちらから計算するとdependencyが短いかも確認する。</p></article>
+<article class="card" data-tags="score sa"><h3>時間依存surrogate（AHC047型）</h3><p>生scoreが大項目だけを早期に支配し候補を不可逆に消す時、序盤は各項を均す変換、終盤は真scoreへ連続的に戻す。最終目的と異なるため、真score bestを別保持する。</p></article>
+<article class="card" data-tags="beam sa representation"><h3>簡略表現＋Beam→SA（AHC043型）</h3><p>詳細経路を探索変数にせずanchor位置・順序だけを探索し、具体化はgreedy。短いBeamで多様な初期候補を作ってSAへ渡す。表現削減とhybridは巨大状態に一般化できる。</p></article>
+<article class="card" data-tags="sa representation"><h3>集合move＋高価subproblem分離（AHC020型）</h3><p>add/removeだけでなくexchangeで探索の連結性を上げる。networkなど高価な従属問題は、毎回近似/キャッシュするか最後だけ解くかを、順位相関と反復数で決める。</p></article>
+<article class="card" data-tags="sa speed representation"><h3>順列insertの表現変更（AHC059型）</h3><p>insertが主近傍なら配列shiftがbottleneckになり得る。linked list＋alive/position補助で局所更新。ただしランダムindexや全走査が増えるなら配列が勝つためmicro+loopで比較。</p></article>
+<article class="card" data-tags="sa representation"><h3>段階的時間配分＋exact finish（AHC066型）</h3><p>前半はmacro/大構造、後半は順序など細部へmove頻度を移す。候補を複数残し最後に小規模DP/repair。異なる時間尺度の変数を同率で動かさない。</p></article>
+<article class="card" data-tags="test"><h3>Topcoder MMからの運用原則</h3><p>visualizer/scorerを最初に自動化し、local/server速度差を校正。latest submission依存など各contest規約を読む。探索法より実験の再現性、seed管理、変更履歴が長期改善を支える。</p></article></section>
+
+<section id="measurement"><h2>評価とbenchmark</h2>
+<article class="card" data-tags="test score"><h3>スコア評価</h3><p><code>tester/run.py --solver ./solver --cases 0-999 --jobs 6 --cores 0,2,4,6,8,10</code></p><p>目的はthroughput。stdout/stderr/score/time/statusを保存。A/Bは同一seedで<code>compare.py A.csv B.csv</code>。ratioは正値かつ尺度に意味がある時だけ。</p></article>
+<article class="card" data-tags="test speed"><h3>速度評価</h3><p><code>tester/benchmark.py --solver ./solver --input in/0000.txt --core 0 --warmup 2 --repeat 15</code></p><p>median, p25/p75, min/max, CVを確認。CVが高ければ改善差を論じない。初期化・出力・safety marginを含むend-to-end時間も別途測る。</p></article>
+<article class="card" data-tags="test speed"><h3>Linux / WSLのaffinity</h3><p><code>lscpu -e=CPU,CORE,SOCKET,NODE</code>でphysical coreを確認。Ryzen 6C/12Tなら同一COREのsiblingsを避けた6 process以下から開始。WSL、Docker、antivirus、Windows電源設定の影響を結果metadataに残す。</p></article></section>
+<p class="no-results">一致する項目がありません。</p><p>根拠とリンク: <a href="data/sources.md">sources.md</a></p>
+</main></div><script src="js/app.js"></script></body></html>

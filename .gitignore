@@ -1,0 +1,9 @@
+a.out
+*.out
+*.o
+gmon.out
+tester/results/*
+!tester/results/.gitkeep
+benchmark/results/*.csv
+benchmark/results/environment-*.txt
+__pycache__/

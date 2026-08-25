@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+mode=release
+if [[ ${1:-} == release || ${1:-} == debug || ${1:-} == profile ]]; then mode=$1; shift; fi
+src=${1:?usage: compile [release|debug|profile] source.cpp [output]}
+out=${2:-a.out}
+cxx=${CXX:-g++}
+common=(-std=gnu++23 -Wall -Wextra -Wshadow -I"$(cd "$(dirname "$0")/.." && pwd)")
+case "$mode" in
+  release) flags=(-O2 -march=native -DNDEBUG -DONLINE_JUDGE -DATCODER -pthread) ;;
+  debug) flags=(-O1 -g -DHT_ENABLE_LOG -D_GLIBCXX_DEBUG -fsanitize=address,undefined -fno-omit-frame-pointer) ;;
+  profile) flags=(-O2 -g -DNDEBUG -pg -fno-omit-frame-pointer -march=native) ;;
+esac
+"$cxx" "${common[@]}" "${flags[@]}" "$src" -o "$out"

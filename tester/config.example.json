@@ -1,0 +1,9 @@
+{
+  "solver": "./solver",
+  "input_dir": "in",
+  "input_pattern": "{seed:04d}.txt",
+  "score_command": "./tools/scorer {input} {output}",
+  "score_regex": "Score\\s*=\\s*([0-9]+)",
+  "timeout": 2.2,
+  "physical_cores": [0, 2, 4, 6, 8, 10]
+}
