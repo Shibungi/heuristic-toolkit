@@ -28,6 +28,26 @@ environment/compile profile main.cpp solver-p # gprof用
 C++23機能を確認するときは `environment/Dockerfile` を使います。完全なAtCoder
 library imageではない点と、CPU/OSは再現できない点に注意してください。
 
+## AtCoder提出用の1ファイルを作る
+
+開発中は `#include "library/..."` で分割し、提出直前にローカルincludeだけを展開します。
+`<bits/stdc++.h>`、`<atcoder/all>` などの山括弧includeはそのまま残ります。
+
+```bash
+tools/make_submission.sh main.cpp submission.cpp
+```
+
+このコマンドは再帰bundle、未解決ローカルinclude検査、release compileを順に行います。
+生成された `submission.cpp` は編集せず、元コードを直して再生成してください。追加の
+include rootが必要なら、そのままbundler引数を渡せます。
+
+```bash
+tools/make_submission.sh src/main.cpp submission.cpp -I path/to/include
+```
+
+bundler単体は `python3 tools/bundle.py main.cpp -o submission.cpp` です。quoted includeが
+見つからなければ黙って残さずエラーにするため、ローカルheaderを含み忘れた提出を防げます。
+
 ## SAを使いたい
 
 `templates/sa_template.cpp` をコピーします。`Annealer` は温度とMetropolis判定だけを
