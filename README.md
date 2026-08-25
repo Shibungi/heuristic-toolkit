@@ -15,6 +15,7 @@ AHC / Marathon Matchの開始前に準備しておく、AI不要の薄いC++ラ�
 
 判断に迷ったら `handbook/index.html`、開始直後は
 `handbook/cheat-sheet.html` を開きます。両方とも完全オフラインです。
+全C++ headerのアルゴリズム・使い方・使用例は `library/README.md` にあります。
 
 ## ビルド
 
@@ -67,10 +68,12 @@ if (sa.accept(delta, timer.progress())) {
 あります。複数近傍は `AdaptiveNeighborhoods` で最低確率を残しつつ選択できます。
 restartはbestを保持してStateを再初期化、reheatは `sa.reheat()` を使います。
 
-## Beam / Chokudai / MCTSを使いたい
+## Beam / 木上Beam / Chokudai / MCTSを使いたい
 
 - Beam: `templates/beam_template.cpp`。Stateが大きい場合は共通関数を捨て、
-  parent/action＋rollbackへ直接改造してください。
+  `templates/tree_beam_template.cpp` のEuler-tour方式へ移行してください。
+- 木上Beam: `library/search/tree_beam_search.hpp`。探索部分木のEuler tourを保持し、
+  1個のStateをapply/undoして葉を巡回するため、beam要素ごとのState copyがありません。
 - Chokudai: `library/search/chokudai_search.hpp`。深さごとのqueueを繰り返し展開します。
 - MCTS: `templates/mcts_template.cpp`。copy型の読みやすいbaselineです。遷移が重いなら
   apply/rollback版を問題側で書きます。rolloutの予測力を小規模A/Bしてから採用します。

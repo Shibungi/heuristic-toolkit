@@ -8,6 +8,7 @@
 #include "library/search/beam_search.hpp"
 #include "library/search/chokudai_search.hpp"
 #include "library/search/simulated_annealing.hpp"
+#include "library/search/tree_beam_search.hpp"
 #include "library/graph/dsu.hpp"
 #include "library/structures/fast_clear_array.hpp"
 #include "library/structures/fast_set.hpp"
@@ -60,8 +61,44 @@ void test_chokudai() {
   });
   assert(got.depth == 3 && got.score == 3);
 }
+void test_tree_beam() {
+  struct Action { int value = 0; };
+  struct State { int depth = 0, sum = 0; };
+  int applied = 0, undone = 0;
+  ht::TreeBeamSearch<State, Action, int> beam({.width = 3});
+  auto result = beam.solve(
+      State{}, 0, 0, 6,
+      [](State& state, auto emit) {
+        const int before_depth = state.depth, before_sum = state.sum;
+        for (int value = 0; value < 3; ++value) {
+          const int score = state.sum + value;
+          const std::uint64_t hash = static_cast<std::uint64_t>(state.depth + 1) * 100 + score;
+          emit(Action{value}, score, hash);
+        }
+        assert(state.depth == before_depth && state.sum == before_sum);
+      },
+      [&](State& state, const Action& action) {
+        ++applied; ++state.depth; state.sum += action.value;
+      },
+      [&](State& state, const Action& action) {
+        ++undone; state.sum -= action.value; --state.depth;
+      });
+  assert(result.depth == 6 && result.score == 12 && result.actions.size() == 6);
+  for (const auto& action : result.actions) assert(action.value == 2);
+  assert(applied == undone);
+
+  ht::TreeBeamSearch<State, Action, int> dedupe({.width = 2});
+  auto deduped = dedupe.solve(
+      State{}, 0, 0, 1,
+      [](State&, auto emit) {
+        emit(Action{1}, 1, 77); emit(Action{2}, 2, 77);
+      },
+      [](State& state, const Action& action) { ++state.depth; state.sum += action.value; },
+      [](State& state, const Action& action) { state.sum -= action.value; --state.depth; });
+  assert(deduped.score == 2 && deduped.actions[0].value == 2);
+}
 int main() {
-  test_rng(); test_structures(); test_incremental_score(); test_beam(); test_chokudai();
+  test_rng(); test_structures(); test_incremental_score(); test_beam(); test_chokudai(); test_tree_beam();
   ht::Timer t(1); assert(t.elapsed_exact() >= 0);
   std::cout << "all tests passed\n";
 }

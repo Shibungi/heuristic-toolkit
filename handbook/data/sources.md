@@ -12,6 +12,8 @@ copy third-party implementations. Toolkit code is independently written under MI
 - [AHC020 editorials](https://atcoder.jp/contests/ahc020/editorial/6575): add/remove/exchange neighborhoods and separating an expensive network subproblem.
 - [AHC059 editorial](https://atcoder.jp/contests/ahc059/editorial/15029): permutation representation and linked-list updates for insertion moves.
 - [AHC066 editorial](https://atcoder.jp/contests/ahc066/editorial/21433): staged time allocation, nested hill climbing and final exact DP repair.
+- [AHC021 editorial](https://atcoder.jp/contests/ahc021/editorial/6681): Euler-tour beam search used to avoid State copies; reports a problem-specific 2x–5x improvement.
+- [Rafael Bocquet's Euler tour beam search](https://gitlab.com/rafaelbocquet-cpcontests/euler-tour-beam-search): original explanation, progressively optimized implementations and benchmarks (MIT).
 - [Topcoder Marathon Match introduction](https://www.topcoder.com/blog/marathon-match-challenges-introduction): local visualizer, iterative measurement, and server/local timing caveat.
 - [Topcoder: Approaching a Marathon Match](https://www.topcoder.com/blog/approaching-marathon-match-task-pt-1): problem-first workflow and approximation mindset.
 
