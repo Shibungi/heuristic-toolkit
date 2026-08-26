@@ -1,4 +1,5 @@
 import pathlib
+import re
 import unittest
 from html.parser import HTMLParser
 
@@ -59,6 +60,32 @@ class HandbookTest(unittest.TestCase):
     def test_tree_beam_explainer_hooks_exist(self):
         required = {"beam-tree-svg", "state-cursor", "beam-step", "beam-play", "beam-event-progress"}
         self.assertTrue(required <= self.parser.ids)
+
+    def test_every_library_entry_has_api_data(self):
+        source = (ROOT / "handbook/data/library-api.js").read_text(encoding="utf-8")
+        api_ids = set(re.findall(r'^\s{4}"([a-z0-9-]+)": \{', source, re.MULTILINE))
+        self.assertEqual(api_ids, set(self.parser.entries))
+        self.assertGreaterEqual(source.count("method("), 75)
+
+    def test_knowledge_pages_and_assets_exist(self):
+        for page in ("techniques.html", "archive.html"):
+            parser = LibraryGuideParser()
+            parser.feed((ROOT / "handbook" / page).read_text(encoding="utf-8"))
+            for relative in parser.local_assets:
+                self.assertTrue((ROOT / "handbook" / relative).resolve().exists(), (page, relative))
+
+    def test_technique_and_archive_coverage(self):
+        techniques = (ROOT / "handbook/data/techniques.js").read_text(encoding="utf-8")
+        archive = (ROOT / "handbook/data/ahc-archive.js").read_text(encoding="utf-8")
+        self.assertGreaterEqual(len(re.findall(r'^\s+id: "', techniques, re.MULTILINE)), 20)
+        self.assertIn("latestPast: 69", archive)
+        self.assertIn('id: "past-modification-greedy"', techniques)
+
+    def test_main_handbook_links_knowledge_pages(self):
+        index = (ROOT / "handbook/index.html").read_text(encoding="utf-8")
+        self.assertIn('href="library.html"', index)
+        self.assertIn('href="techniques.html"', index)
+        self.assertIn('href="archive.html"', index)
 
 
 if __name__ == "__main__":
