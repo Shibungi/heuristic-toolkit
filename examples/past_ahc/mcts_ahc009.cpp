@@ -27,6 +27,13 @@ struct Model {
   }
 };
 
+// 【問題】AHC009: 確率的な移動失敗がある迷路で、200手の指示列を決める。
+// 【この解法】現在位置から次の1ActionをMCTSで選び、決定論的に動いたと仮定して最大60回繰り返す。
+// 【目的関数】Model::evaluateはゴールなら1000-depth、未到達なら-distance。大きいほど良い最大化。
+// 【1反復】UCB/PUCT選択→未試行Action展開→最大30手rollout→evaluate→rootまで平均値更新。
+// 【返り値】root直下で訪問回数最大の1Action。完全pathではないのでmain側で反復する。
+// 【限界】本来の確率分布をStateに持たず、実際の失敗もsampleしない。MCTS API理解用baseline。
+// 公式問題: https://atcoder.jp/contests/ahc009/tasks/ahc009_a
 // MCTSの使用例: AHC009で次の一手だけを探索し、実際に進んだと仮定して再探索する。
 // 確率的な移動結果を厳密に扱うなら、Stateを位置分布にしnext()で確率質量を遷移させる。
 int main() {

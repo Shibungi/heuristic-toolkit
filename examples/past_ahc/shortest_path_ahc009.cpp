@@ -5,6 +5,13 @@
 using namespace std;
 using namespace past_ahc::ahc009;
 
+// 【問題】AHC009: 確率的に移動指示が失敗する迷路で、到達時刻を早める。
+// 【この解法】各マスを頂点、通路を無向辺にし、ゴールをsourceとしたBFS距離を計算する。
+// 【目的】BFS距離の最小化。現在マスからdistが最小の隣接マスへ進む文字列を作る。
+// 【shortest_pathの役割】graphとsourceから全頂点distだけを返す。経路復元は問題側のgreedyで行う。
+// 【読む順】400頂点graph構築→ht::bfs→startから距離降下→200文字へpadding。
+// 【限界】確率pを無視するため、同じ手を複数回送るなどのrobust性はない。
+// 公式問題: https://atcoder.jp/contests/ahc009/tasks/ahc009_a
 // shortest_pathの使用例: AHC009の迷路をグラフ化し、ゴールからBFSする。
 // 失敗確率pを無視した決定論的baselineだが、改善案の比較対象として必ず残しておく。
 int main() {

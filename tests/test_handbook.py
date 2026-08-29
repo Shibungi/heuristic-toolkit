@@ -67,8 +67,15 @@ class HandbookTest(unittest.TestCase):
         self.assertEqual(api_ids, set(self.parser.entries))
         self.assertGreaterEqual(source.count("method("), 75)
 
+    def test_every_library_entry_has_visible_concept_contract(self):
+        source = (ROOT / "handbook/data/library-concepts.js").read_text(encoding="utf-8")
+        concept_ids = set(re.findall(r'^  "([a-z0-9-]+)": \{', source, re.MULTILINE))
+        self.assertEqual(concept_ids, set(self.parser.entries))
+        for required in ("objective:", "state:", "transition:", "decision:", "output:", "use:", "trap:"):
+            self.assertEqual(source.count(required), len(self.parser.entries), required)
+
     def test_knowledge_pages_and_assets_exist(self):
-        for page in ("techniques.html", "archive.html"):
+        for page in ("start-here.html", "techniques.html", "archive.html"):
             parser = LibraryGuideParser()
             parser.feed((ROOT / "handbook" / page).read_text(encoding="utf-8"))
             for relative in parser.local_assets:
@@ -84,6 +91,7 @@ class HandbookTest(unittest.TestCase):
     def test_main_handbook_links_knowledge_pages(self):
         index = (ROOT / "handbook/index.html").read_text(encoding="utf-8")
         self.assertIn('href="library.html"', index)
+        self.assertIn('href="start-here.html"', index)
         self.assertIn('href="techniques.html"', index)
         self.assertIn('href="archive.html"', index)
 

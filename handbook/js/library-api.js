@@ -1,6 +1,7 @@
 (() => {
   "use strict";
   const data = window.HT_LIBRARY_API || {};
+  const concepts = window.HT_LIBRARY_CONCEPTS || {};
   const escape = (value) => String(value).replace(/[&<>"']/g, (ch) => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[ch]);
   let count = 0;
 
@@ -8,6 +9,24 @@
     const entry = document.getElementById(id);
     if (!entry) return;
     count += guide.methods.length;
+    const concept = concepts[id];
+    if (concept) {
+      const panel = document.createElement("section");
+      panel.className = "concept-contract";
+      panel.innerHTML = `
+        <h4>このライブラリが行うこと</h4>
+        <dl class="concept-grid">
+          <div class="concept-objective"><dt>目的・比較方向</dt><dd>${escape(concept.objective)}</dd></div>
+          <div><dt>保持する状態</dt><dd>${escape(concept.state)}</dd></div>
+          <div><dt>1ステップ</dt><dd>${escape(concept.transition)}</dd></div>
+          <div><dt>採否・選択</dt><dd>${escape(concept.decision)}</dd></div>
+          <div><dt>返すもの</dt><dd>${escape(concept.output)}</dd></div>
+          <div><dt>向く場面</dt><dd>${escape(concept.use)}</dd></div>
+        </dl>
+        <p class="concept-trap"><strong>取り違えやすい点:</strong> ${escape(concept.trap)}</p>`;
+      const anchor = entry.querySelector(".entry-facts") || entry.querySelector(".entry-summary") || entry.firstElementChild;
+      anchor.insertAdjacentElement("afterend", panel);
+    }
     const details = document.createElement("details");
     details.className = "api-reference";
     const methods = guide.methods.map((item) => `

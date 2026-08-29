@@ -8,6 +8,13 @@ using namespace past_ahc::ahc009;
 struct State { int r = 0, c = 0, depth = 0; };
 struct Action { int d = 0, from_r = 0, from_c = 0, to_r = 0, to_c = 0; };
 
+// 【問題】AHC009: 確率的移動失敗のある迷路で、200手の到達確率・到達時刻を改善する。
+// 【この解法】位置だけの小さい教材Stateを使い、60層・幅300で-distanceを最大化する。
+// 【目的関数】child_score = -Manhattan distance。ゴール到達には+1000し、大きい候補を残す。
+// 【State/Action】Stateは座標とdepth。Actionは変更前後座標を持ち、applyとundoを完全に対称にする。
+// 【TreeBeamの役割】可変State 1個をEuler tourで全葉へ動かし、best Action列を返す。
+// 【重要な限界】この実装は深さごとに保持部分木を走査するため、深さ10,000級ではO(width×depth²)化し得る。
+// 公式問題: https://atcoder.jp/contests/ahc009/tasks/ahc009_a
 // 木上Beamの使用例: AHC009の位置Stateを1個だけ持ち、Euler tourでapply/undoする。
 // 実際に到達確率400要素をStateへ入れるとcopyが重くなるため、この方式の利点が大きくなる。
 int main() {

@@ -5,6 +5,13 @@
 using namespace std;
 using namespace past_ahc::ahc002;
 
+// 【問題】AHC002: 同じタイルを再訪しない経路の、通過マス得点合計を最大化する。
+// 【この解法】合法4方向を毎手shuffleし、最初の方向へ進む経路を3000回作って最大scoreを返す。
+// 【State】座標、使用済みタイル、経路、score。乱数seedは20210822に固定する。
+// 【RNGの役割】方向順序だけを変える。同じbinary・入力・seedなら同じbest経路を再現できる。
+// 【読む順】外側restart→内側while→Fisher-Yates→合法手選択→score加算→best比較。
+// 【限界】点数を次手選択に使わない。再現性とA/B比較のための最小例である。
+// 公式問題: https://atcoder.jp/contests/ahc002/tasks/ahc002_a
 // RNGの使用例: AHC002で同一seedなら完全に同じ経路を再現できるランダム化貪欲。
 // スコア比較時に乱数列を固定できることが、近傍や評価関数のA/B比較では重要になる。
 int main() {

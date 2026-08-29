@@ -5,6 +5,13 @@ using namespace std;
 
 struct Operation { int r1, c1, r2, c2; };
 
+// 【問題】AHC021: 三角形の親<=子という条件を、隣接swap最大10,000回で満たし、手数を減らす。
+// 【この解法】親より小さい子を見つけたらswapするheap化貪欲。違反数を減らす方向へ進む。
+// 【State】三角配列aと出力Operation列。1候補で変更するのは親・子の2整数だけ。
+// 【UndoLogの役割】checkpoint後に2代入を記録し、採用ならcommit、不採用ならrollbackする。
+// 【採否】parent>childなら局所違反が1つ解消するため採用。それ以外は元へ戻す。
+// 【限界】全体違反数の厳密差分や最小手数を評価しない。rollback APIの制御フローを示す例。
+// 公式問題: https://atcoder.jp/contests/ahc021/tasks/ahc021_a
 // UndoLogの使用例: AHC021の三角形を、親 <= 子になるよう隣接swapで改善する。
 // 各候補をいったん適用して評価し、悪化時だけrollbackする探索の最小形になっている。
 int main() {

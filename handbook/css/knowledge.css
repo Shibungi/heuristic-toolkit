@@ -1,6 +1,16 @@
 .knowledge-header { grid-template-columns: minmax(210px, 1fr) minmax(250px, 560px) auto; }
 .knowledge-nav { display: flex; gap: .8rem; align-items: center; justify-content: end; font-size: .86rem; }
 .knowledge-main { width: min(1100px, calc(100% - 2rem)); margin: 0 auto; padding: 2.7rem 0 5rem; }
+.knowledge-main > .guide-hero { margin-bottom: 2.5rem; }
+.knowledge-section { margin: 0 0 3rem; }
+.knowledge-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .9rem; }
+.knowledge-card { display: block; padding: 1.1rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); text-decoration: none; }
+.knowledge-card h3 { margin: 0 0 .55rem; color: var(--accent-strong); font-size: 1rem; }
+.knowledge-card p { margin: .35rem 0; color: var(--muted); line-height: 1.75; }
+.knowledge-card li { margin: .35rem 0; line-height: 1.65; }
+.knowledge-card pre { overflow-x: auto; padding: .8rem; border-radius: 10px; background: var(--code-bg); }
+.knowledge-card.wide-card { margin-bottom: .9rem; }
+a.knowledge-card:hover { border-color: var(--accent); transform: translateY(-1px); }
 .knowledge-hero { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2rem; align-items: end; padding-bottom: 2rem; border-bottom: 1px solid var(--border); }
 .knowledge-hero h1 { margin: .25rem 0 .8rem; }
 .knowledge-hero p { max-width: 760px; color: var(--muted); }
@@ -49,6 +59,7 @@
   .knowledge-header { grid-template-columns: 1fr; }
   .knowledge-nav { display: none; }
   .knowledge-main { width: min(100% - 1.5rem, 1100px); padding-top: 1.5rem; }
+  .knowledge-grid { grid-template-columns: 1fr; }
   .knowledge-hero, .technique-card > header { grid-template-columns: 1fr; }
   .knowledge-number { justify-items: start; }
   .knowledge-controls { top: 106px; align-items: stretch; flex-direction: column; }

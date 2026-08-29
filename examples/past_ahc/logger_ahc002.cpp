@@ -5,6 +5,13 @@
 using namespace std;
 using namespace past_ahc::ahc002;
 
+// 【問題】AHC002: 再訪禁止経路の得点合計を最大化する。
+// 【この解法】一手先得点最大の合法手を選ぶ決定的貪欲。stdoutには経路だけを出す。
+// 【観測項目】step、座標、current score、最後にfinal scoreをstderrへ出す。
+// 【Loggerの役割】debug buildではHT_LOGをcerrへ、releaseでは式の評価ごと消す。
+// 【重要】毎反復ログは探索を遅くする。大規模loopでは(iter&1023)==0などで間引く。
+// 【限界】このログは真の公式scoreを計算するが、改善理由や候補数までは観測しない。
+// 公式問題: https://atcoder.jp/contests/ahc002/tasks/ahc002_a
 // Loggerの使用例: AHC002の貪欲解を壊さずにデバッグ情報だけをstderrへ出す。
 // 提出時はHT_ENABLE_LOGを定義しないため、HT_LOG内の式そのものが消える。
 int main() {

@@ -1,4 +1,6 @@
 solver
+solver-*
 submission.cpp
 out/*
 !out/.gitkeep
+.last-build-mode

@@ -12,6 +12,13 @@ struct State {
 };
 struct Move { int r, c; char before, after; };
 
+// 【問題】AHC004: 盤面に含まれる入力文字列数を最大化する。
+// 【目的関数】State::score() = covered語数。大きいほど良く、SAConfig既定のMaximizeを使う。
+// 【近傍】ランダムな1マスをA〜Hへ変更。delta = 変更後covered数 − 変更前covered数。
+// 【採否】delta>=0は必ず、delta<0も温度依存確率で受理し、局所最大からの脱出を試す。
+// 【返り値】最後のcurrentではなく、探索中にcovered数が最大だったbest Grid。
+// 【限界】deltaを全再計算する30反復の説明版。実戦では影響する行・列だけを差分評価する。
+// 公式問題: https://atcoder.jp/contests/ahc004/tasks/ahc004_a
 // 焼きなましの使用例: AHC004の1マス変更。説明優先で差分ではなく全再計算する。
 // 実戦では変更行・列に関係する単語だけ再評価し、1近傍をO(M)未満へ落とす。
 int main() {

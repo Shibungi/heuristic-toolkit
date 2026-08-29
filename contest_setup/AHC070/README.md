@@ -7,11 +7,29 @@
 
 1. 公式配布物を `tools/`、生成入力を `in/` に置く。
 2. 入出力と最小valid解を実装する。
-3. `./build.sh debug` でassert・sanitizer付きビルドを行う。
-4. `./run.sh in/0000.txt` で1ケースを確認する。
-5. scorerを目視確認してから複数seedのbaselineを保存する。
-6. 一変更ずつA/B比較し、終了20分前から大改造しない。
-7. `./submit.sh` でローカルincludeを展開した `submission.cpp` を作る。
+3. `./build.sh debug` でassert・sanitizer付きビルドを行い、バグを確認する。
+4. `HT_MODE=debug HT_TIMEOUT=30 ./run.sh in/0000.txt` でdebug実行する。
+5. `./build.sh release` の後に `./run.sh in/0000.txt` で提出相当の時間を測る。
+6. scorerを目視確認してから複数seedのbaselineを保存する。
+7. 一変更ずつA/B比較し、終了20分前から大改造しない。
+8. `./submit.sh` でローカルincludeを展開した `submission.cpp` を作る。
+
+## buildとrunの役割
+
+- `debug`: ASan、UBSan、`_GLIBCXX_DEBUG`、assert、ログ付き。バグ発見用。遅くて正常。
+- `release`: `-O2 -DNDEBUG`。提出速度・スコア比較用。
+- `run.sh`: 実行前にmodeとtimeoutを表示し、1秒ごとに生存を報告する。stderrも隠さない。
+- 既定timeoutは5秒。長くする場合は `HT_TIMEOUT=30 ./run.sh in/0000.txt` とする。
+
+「遅い」と思ったら、まず表示されたmodeを見る。debugの時間を提出速度と比較しない。
+releaseでも遅い場合は、深さ×幅×遷移数、State copy、全再計算、出力flushをprofileする。
+
+`run.sh`自身が行うのはsolverの1回起動だけである。実行中の待ち時間は`main.cpp`内部の処理であり、
+探索のphaseや反復回数まで自動では分からない。必要ならsolverからstderrへ、経過時間、反復回数、
+best scoreを0.2〜1秒間隔で出す。毎反復出力すると、ログ自体がbottleneckになるので避ける。
+
+`Timer(1.85, 0.05)`のような停止条件があれば、release版でも意図的に約1.8秒使う。
+さらに1反復が重く、時刻確認を数反復ごとにしか行わない場合は、その1反復ぶん停止時刻を超過する。
 
 ## 公開URL
 

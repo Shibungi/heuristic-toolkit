@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="AHC heuristic-toolkit を初めて使う人向けの入口">
+  <title>Heuristic Toolkit — Start Here</title>
+  <link rel="stylesheet" href="css/library.css">
+  <link rel="stylesheet" href="css/knowledge.css">
+</head>
+<body>
+<header class="guide-header">
+  <a class="brand" href="index.html"><span class="brand-mark">HT</span><span>Heuristic Toolkit</span></a>
+  <nav class="header-actions" aria-label="関連資料"><a href="library.html">Library</a><a href="techniques.html">Techniques</a><a href="archive.html">Archive</a></nav>
+</header>
+
+<main id="guide-main" class="knowledge-main">
+  <section class="guide-hero">
+    <p class="eyebrow">READ THIS FIRST</p>
+    <h1>コードを書く前と、遅いときに見る入口</h1>
+    <p class="hero-copy">各手法を暗記する資料ではありません。目的関数の向き、状態、1手、採否、計算量を順番に確認し、手法が問題に合うかを判断するための読み方です。</p>
+  </section>
+
+  <section class="knowledge-section">
+    <div class="section-heading"><p class="eyebrow">01 / PROBLEM</p><h2>最初に答える3問</h2></div>
+    <div class="knowledge-grid">
+      <article class="knowledge-card"><h3>何を良くするのか</h3><p>最大化か最小化か、実行不可能条件は何かを数式か日本語で書く。ライブラリの内部スコアと問題のスコアが逆向きなら、符号を反転する。</p></article>
+      <article class="knowledge-card"><h3>1手で何が変わるのか</h3><p>State、Action、変更される評価項を列挙する。全再計算せずに差分だけ更新できるか、apply後にundoで完全に戻せるかを小さい入力で検査する。</p></article>
+      <article class="knowledge-card"><h3>1秒を何が使うのか</h3><p>反復回数、1反復の候補数、Stateコピー量、評価計算、木の走査を分けて測る。アルゴリズム名ではなく、実測で支配している処理を直す。</p></article>
+    </div>
+  </section>
+
+  <section class="knowledge-section">
+    <div class="section-heading"><p class="eyebrow">02 / RUN</p><h2>通常実行とバグ調査を分ける</h2></div>
+    <article class="knowledge-card wide-card">
+      <h3>通常の速度を見るとき</h3>
+      <pre><code>./build.sh release
+./run.sh in/0000.txt</code></pre>
+      <p><code>run.sh</code> は使用する実行ファイル、入力、出力先、制限時間を最初に表示し、実行中は1秒ごとに経過時間を表示する。既定の制限時間は5秒で、<code>HT_TIMEOUT=10</code> のように変更できる。</p>
+      <h3>メモリ破壊や範囲外アクセスを探すとき</h3>
+      <pre><code>HT_MODE=debug HT_TIMEOUT=30 ./run.sh in/0000.txt</code></pre>
+      <p>debug版は AddressSanitizer、UndefinedBehaviorSanitizer、<code>_GLIBCXX_DEBUG</code> を有効にする。意図的に遅く、メモリも多く使うため、提出速度の測定には使わない。</p>
+    </article>
+  </section>
+
+  <section class="knowledge-section">
+    <div class="section-heading"><p class="eyebrow">03 / POSTMORTEM</p><h2>AHC070で長時間になった理由</h2></div>
+    <div class="knowledge-grid">
+      <article class="knowledge-card"><h3>意図された1.85秒</h3><p>現在の<code>main.cpp</code>は<code>Timer(1.85, 0.05)</code>で停止するまで改善探索を続ける。release版が約1.82秒かかるのは停止条件どおりで、<code>run.sh</code>が複数caseを実行しているためではない。</p></article>
+      <article class="knowledge-card"><h3>1試行が重い</h3><p>1試行で近傍を4種類試し、そのたびに<code>get_score</code>を全計算する。評価は10,000個の操作を順に処理し、各位置追加後に100×100盤面の距離更新を行う。ここが探索本体の計算時間を使う。</p></article>
+      <article class="knowledge-card"><h3>debug版がさらに遅い理由</h3><p>安全検査の追加に加え、Timerは4試行ごとにしか時刻を確認しない。1試行がdebug版で極端に重いと、次に時計を見るまで停止予定を超える。速度測定はrelease、debugはバグ調査に分ける。</p></article>
+    </div>
+  </section>
+
+  <section class="knowledge-section">
+    <div class="section-heading"><p class="eyebrow">04 / SCORE DIRECTION</p><h2>最大化・最小化を取り違えない</h2></div>
+    <div class="knowledge-grid">
+      <article class="knowledge-card"><h3>HillClimbing</h3><p>この実装は<strong>最大化専用</strong>。<code>delta = 新score - 現score</code> とし、<code>delta &gt;= 0</code> の手だけ採用する。最小化問題ではscoreを負にするか、専用ループを書く。</p></article>
+      <article class="knowledge-card"><h3>SimulatedAnnealing</h3><p><code>maximize=true/false</code> で向きを指定できる。ライブラリへ渡すdeltaの定義と設定を一致させる。</p></article>
+      <article class="knowledge-card"><h3>Beam / Chokudai</h3><p>Beamは大きい評価値を残す構成、Chokudaiは比較器で順序を決める。距離最小化なら例のように<code>-distance</code>を最大化する方法が単純。</p></article>
+    </div>
+  </section>
+
+  <section class="knowledge-section">
+    <div class="section-heading"><p class="eyebrow">05 / EXAMPLES</p><h2>過去問コードの読み順</h2></div>
+    <article class="knowledge-card wide-card">
+      <ol>
+        <li>冒頭コメントで、問題と目的関数の向きを確認する。</li>
+        <li><code>State</code> が何を保持し、何を省略しているかを見る。</li>
+        <li><code>Action</code> と、1手で変更される箇所を見る。</li>
+        <li>候補の採否・上位選択・重複除去を見る。</li>
+        <li>返す解と、簡略例として省略した制約を確認する。</li>
+      </ol>
+      <p>例は提出解のコピーではなく、各ライブラリの役割を小さく切り出した教材である。冒頭の「制限」を読んでから実戦用へ拡張する。</p>
+    </article>
+    <div class="knowledge-grid">
+      <a class="knowledge-card" href="../examples/past_ahc/timer_ahc002.cpp"><h3>AHC002</h3><p>Timer / RNG / FastSet / GridIndex / Logger。重複タイルを避けながら経路得点を最大化する。</p></a>
+      <a class="knowledge-card" href="../examples/past_ahc/simulated_annealing_ahc004.cpp"><h3>AHC004</h3><p>SA / HC / bitset / Zobrist。文字列を盤面へ配置し、含まれる対象文字列数を増やす。</p></a>
+      <a class="knowledge-card" href="../examples/past_ahc/dsu_ahc007.cpp"><h3>AHC007</h3><p>DSU。オンラインで辺を選び、連結性を意識しながら採用辺長を小さくする。</p></a>
+      <a class="knowledge-card" href="../examples/past_ahc/tree_beam_search_ahc009.cpp"><h3>AHC009</h3><p>Beam / TreeBeam / Chokudai / MCTS / BFS。確率的に失敗する移動列でゴール到達を狙う。</p></a>
+      <a class="knowledge-card" href="../examples/past_ahc/undo_log_ahc021.cpp"><h3>AHC021</h3><p>UndoLog。三角盤面の局所swapをapply / undoし、違反を減らす。</p></a>
+    </div>
+  </section>
+</main>
+</body>
+</html>

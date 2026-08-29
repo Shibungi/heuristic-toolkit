@@ -5,6 +5,13 @@
 using namespace std;
 using namespace past_ahc::ahc004;
 
+// 【問題】AHC004: トーラス盤面に含まれる入力文字列数を最大化する。
+// 【この解法】ランダムな1マス変更を試し、covered語数が非悪化かつ未訪問hashなら採用する山登り。
+// 【State】Grid、現在covered数、盤面Zobrist hash、訪問済みhash集合。
+// 【比較方向】next_score >= currentだけ採用する最大化。同点遷移は許す。
+// 【Zobristの役割】マスold→new変更時の盤面hashをO(1)更新し、同じ盤面への往復を避ける。
+// 【限界】scoreは全再計算、hash衝突確認なし、30反復だけの教材版で高得点解ではない。
+// 公式問題: https://atcoder.jp/contests/ahc004/tasks/ahc004_a
 // ZobristHashの使用例: AHC004の盤面を1マス変更したとき、ハッシュをO(1)更新する。
 // 探索が同じ盤面を行き来するのを防ぐ。衝突は理論上あるので、厳密性が必要なら盤面比較も足す。
 int main() {

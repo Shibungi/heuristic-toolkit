@@ -11,7 +11,7 @@
 <header class="guide-header">
   <a class="brand" href="index.html"><span class="brand-mark">HT</span><span>Heuristic Toolkit</span></a>
   <label class="global-search"><span aria-hidden="true">⌕</span><span class="sr-only">ライブラリを検索</span><input id="library-search" type="search" placeholder="手法・症状・APIを検索  /" autocomplete="off"></label>
-  <div class="header-actions"><button id="expand-all" type="button">すべて開く</button><a href="../library/README.md">Markdown版</a></div>
+  <div class="header-actions"><a href="start-here.html">最初に読む</a><button id="expand-all" type="button">すべて開く</button><a href="../library/README.md">Markdown版</a></div>
 </header>
 
 <div class="guide-layout">
@@ -43,7 +43,7 @@
     <section id="overview" class="guide-hero">
       <p class="eyebrow">OFFLINE C++ REFERENCE</p>
       <h1>問題の形から、使う部品へ。</h1>
-      <p class="hero-copy">辞典を上から読むのではなく、状態の作り方とbottleneckから最初の手法を選ぶ。各項目に原理、最小API、使う条件、危険点をまとめています。</p>
+      <p class="hero-copy">各項目の最初に、目的関数の向き、保持するState、1ステップ、採否条件、返り値を常時表示します。折りたたみを開かなくても「何を最大化・最小化するコードか」が分かる構成です。</p>
       <div class="hero-stats" aria-label="ガイドの収録内容">
         <div><strong>17</strong><span>headers</span></div><div><strong id="api-count">—</strong><span>documented APIs</span></div><div><strong>0</strong><span>runtime dependencies</span></div>
       </div>
@@ -300,6 +300,6 @@ for (int d = 0; d &lt; 4; ++d) {
     <footer class="guide-footer"><p>正しさ → 速度 → 変更容易性。測るのは <strong>quality / iteration</strong>、<strong>iterations / second</strong>、<strong>paired final score</strong>。</p><a href="index.html">実戦ハンドブックへ戻る</a></footer>
   </main>
 </div>
-<script src="data/library-api.js"></script><script src="js/library-api.js"></script><script src="js/library.js"></script>
+<script src="data/library-api.js"></script><script src="data/library-concepts.js"></script><script src="js/library-api.js"></script><script src="js/library.js"></script>
 </body>
 </html>
