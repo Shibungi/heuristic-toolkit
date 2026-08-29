@@ -1,0 +1,4 @@
+solver
+submission.cpp
+out/*
+!out/.gitkeep
