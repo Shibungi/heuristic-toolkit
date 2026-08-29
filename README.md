@@ -38,6 +38,8 @@ AHC / Marathon Matchの開始前に準備しておく、AI不要の薄いC++ラ�
 検索や木上Beamの動作図が不要なら、文章だけの `library/README.md` も使えます。
 AHC独自の実戦テクニックは `handbook/techniques.html`、AHC001〜069の公式資料・
 参加記・感想・AHCラジオ索引は `handbook/archive.html` から参照できます。
+17個の各ライブラリを過去AHCの入出力へ接続した日本語コメント付き解法例は
+`examples/past_ahc/` にあります。
 
 ## ビルド
 
