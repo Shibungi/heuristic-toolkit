@@ -4,6 +4,25 @@ AHC / Marathon Matchの開始前に準備しておく、AI不要の薄いC++ラ�
 テンプレート、評価基盤、判断ハンドブックです。既存の問題別コードは変更しません。
 標準ライブラリ以外の実行時依存はありません。
 
+## 生成AI利用ルールへの対応
+
+このリポジトリには、コンテスト開始前に生成AIを用いて作成・整理したコードと文書が
+含まれます。短期AHCでこれらのコードを利用する場合は、AtCoderの
+[短期AHC生成AI利用ルール](https://info.atcoder.jp/entry/short-ahc-llm-rules-ja)を確認し、
+利用するコードがコンテスト開始前に公開済みであることを示すURLを、提出コードの
+該当部分へコメントとして明記してください。
+
+`main` は更新される可能性があるため、提出時はコミットを固定したURLを推奨します。
+
+```cpp
+// Pre-published AI-assisted code:
+// https://github.com/Shibungi/heuristic-toolkit/blob/<commit>/library/search/simulated_annealing.hpp
+```
+
+使用するコミットは `git rev-parse HEAD` で確認できます。コンテスト開始後に作成・変更した
+コードを、開始前から公開されていたコードとして扱うことはできません。常に最新の公式規約を
+優先してください。
+
 ## コンテスト開始時
 
 1. `templates/` から問題ディレクトリへコピーする。
